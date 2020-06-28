@@ -1,0 +1,9 @@
+Part 1
+- Import pygame, and other imports needed
+- Clock
+- Variables
+- Game window caption
+- Create Window
+- Game loop
+- Add [pygame.display.update()]
+- Add [clock.tick()]
