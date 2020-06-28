@@ -1,4 +1,4 @@
-Part 1
+(Part 1)
 - Import pygame, and other imports needed
 - Clock
 - Variables
@@ -7,3 +7,30 @@ Part 1
 - Game loop
 - Add [pygame.display.update()]
 - Add [clock.tick()]
+
+(Part 2)
+- Player image variable
+- Player location variable
+- Player movemenets variable = False
+
+- Player keys when and not pressed in game loop
+- Player movemenet frames [player_location[0] +4, and -4]
+- Screen fill to prevent trails
+- Created Player Rectangle variable
+- Created Player Rectangle for collisions that tracks Player
+- Created test Rectangle variable
+- Drew Rectangle in game loop that changes color when the player collides
+       
+    if player_rect.colliderect(test_rect):
+        pygame.draw.rect(screen, (255,0,0), test_rect)
+    else:
+        pygame.draw.rect(screen, (0,0,0), test_rect)
+
+- Created player momentum in game loop that follows the player's Rectangle
+
+    if player_rect.colliderect(test_rect):
+        pygame.draw.rect(screen, (255,0,0), test_rect)
+    else:
+        pygame.draw.rect(screen, (0,0,0), test_rect)
+
+- else statment flips momentum causing the player to bounce up
