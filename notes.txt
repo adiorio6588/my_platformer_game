@@ -8,6 +8,7 @@
 - Add [pygame.display.update()]
 - Add [clock.tick()]
 
+
 (Part 2)
 - Player image variable
 - Player location variable
@@ -34,3 +35,21 @@
         pygame.draw.rect(screen, (0,0,0), test_rect)
 
 - else statment flips momentum causing the player to bounce up
+
+
+(Part 3)
+- Removed test Rectangle
+- Removed bounch momentum
+- Added game map
+- Added png tiles
+- Added Rect for tiles
+- Added new player momentum
+- Added collisions for tile Rect
+
+
+(Part 4)
+- Load map from txt, created load_map function
+- Created true_scroll variable
+- Added scroll effects to map and player
+- Added a three player background 
+
