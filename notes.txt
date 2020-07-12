@@ -53,3 +53,33 @@
 - Added scroll effects to map and player
 - Added a three player background 
 
+
+
+
+
+
+
+
+def load_map(path): # (PART 4)
+    f = open(path + '.txt','r')
+    data = f.read()
+    f.close()
+    data = data.split('\n')
+    game_map = []
+    for row in data:
+        game_map.append(list(row))
+    return game_map
+
+
+y = 0
+   for layer in game_map:
+       x = 0
+       for tile in layer:
+            if tile == '1':
+                display.blit(dirt_img,(x * 16 - scroll[0], y * 16 - scroll[1])) # scrolling/ tile movements (PART 4)
+            if tile == '2':
+                display.blit(grass_img,(x * 16 - scroll[0], y * 16 - scroll[1]))
+            if tile != '0':
+                tile_rects.append(pygame.Rect(x * 16, y * 16 ,16 ,16))
+            x += 1
+        y += 1

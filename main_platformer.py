@@ -1,15 +1,14 @@
-####################### Imports ###########################
-
-import pygame, sys
-
+import pygame, sys, os, random
+import data.engine as e
 from pygame.locals import * # importing all pygame modules (PART 1)
-pygame.init() 
 
-################# Varibiles for the game ##################
+pygame.mixer.pre_init(44100, -16, 2, 512)  # changes sound playtime(PART 6)
+pygame.init() 
+pygame.mixer.set_num_channels(64) # setting how many sounds play at once (PART 6)
 
 clock = pygame.time.Clock()
 
-pygame.display.set_caption('My Pygame Window')
+pygame.display.set_caption('Pixel Pug')
 
 WINDOW_SIZE = (600, 400)
 
@@ -24,107 +23,62 @@ air_timer = 0
 
 true_scroll = [0, 0] # (PART 4)
 
-def load_map(path): # (PART 4)
-    f = open(path + '.txt','r')
-    data = f.read()
-    f.close()
-    data = data.split('\n')
-    game_map = []
-    for row in data:
-        game_map.append(list(row))
-    return game_map
+CHUNK_SIZE = 8
 
+def generate_chunk(x,y):
+    chunk_data = []
+    for y_pos in range(CHUNK_SIZE):
+        for x_pos in range(CHUNK_SIZE):
+            target_x = x * CHUNK_SIZE + x_pos
+            target_y = y * CHUNK_SIZE + y_pos
+            tile_type = 0 # nothing
+            if target_y > 10:
+                tile_type = 2 # dirt
+            elif target_y == 10:
+                tile_type = 1 # grass
+            elif target_y == 9:
+                if random.randint(1,5) == 1:
+                    tile_type = 3 # plant
+            if tile_type != 0:
+                chunk_data.append([[target_x,target_y],tile_type])
+    return chunk_data
 #################### PLAYER ANIMATIONS #####################
-global animation_frames  # (PART 4)
-animation_frames = {}
+e.load_animations('data/images/entities/')
 
-def load_animation(path, frame_durations):
-    global animation_frames
-    animation_name = path.split('/')[-1]
-    animation_frame_data = []
-    n = 0
-    for frame in frame_durations:
-        animation_frame_id = animation_name + '_' + str(n)
-        img_loc = path + '/' + animation_frame_id + '.png'
-        # player_animations/idle/idle_0.png
-        animation_image = pygame.image.load(img_loc).convert()
-        animation_image.set_colorkey((255,255,255))
-        animation_frames[animation_frame_id] = animation_image.copy()
-        for i in range(frame):
-            animation_frame_data.append(animation_frame_id)
-        n += 1
-    return animation_frame_data
+game_map = {}
 
-def change_action(action_var, frame, new_value):
-    if action_var != new_value:
-        action_var = new_value
-        frame = 0
-    return action_var,frame
-        
+grass_img = pygame.image.load('data/images/grass.png')
+dirt_img = pygame.image.load('data/images/dirt.png')
+plant_img = pygame.image.load('data/images/plant.png').convert()
+plant_img.set_colorkey((255, 255, 255))
 
-animation_database = {}
+tile_index = {1:grass_img, 
+              2:dirt_img, 
+              3:plant_img
+              }
 
-animation_database['run'] = load_animation('player_animations/run',[7,7])
-animation_database['idle'] = load_animation('player_animations/idle',[7,7,40])
+jump_sound = pygame.mixer.Sound('data/audio/jump.wav')
+grass_sounds = [pygame.mixer.Sound('data/audio/grass_0.wav'), pygame.mixer.Sound('data/audio/grass_1.wav')]
+grass_sounds[0].set_volume(0.2)
+grass_sounds[1].set_volume(0.2)
 
-game_map = load_map('map')
+pygame.mixer.music.load('data/audio/music.wav')
+pygame.mixer.music.play(-1)
 
-grass_img = pygame.image.load('grass.png')
-dirt_img = pygame.image.load('dirt.png')
+grass_sound_timer = 0
 
-player_action = 'idle'
-player_frame = 0
-player_flip = False
-
-######################### MAP ###############################
-
-game_map = load_map('map')
-
-grass_img = pygame.image.load('grass.png') # (PART 3)
-dirt_img = pygame.image.load('dirt.png')
-
-player_img = pygame.image.load('player.png').convert() # (PART 3)
-player_img.set_colorkey((255, 255, 255)) # edits out the player's white background (PART 3)
-
-player_rect = pygame.Rect(100, 100, 5, 13) # (PART 3)
+player = e.entity(100, 100, 30, 23, 'player') # (PART 3)
 
 background_objects = [[0.25,[120,10,70,400]], [0.25,[280,30,40,400]], [0.5,[30,40,40,400]], [0.5,[130,90,100,400]], [0.5,[300,80,120,400]]]
-
-
-def collision_test(rect,tiles): # (PART 3)
-    hit_list = []
-    for tile in tiles:
-        if rect.colliderect(tile):
-            hit_list.append(tile)
-    return hit_list
-
-def move(rect,movement,tiles):  # (PART 3)
-    collision_types = {'top':False,'bottom':False,'right':False,'left':False}
-    rect.x += movement[0]
-    hit_list = collision_test(rect,tiles)
-    for tile in hit_list:
-        if movement[0] > 0:
-            rect.right = tile.left
-            collision_types['right'] = True
-        elif movement[0] < 0:
-            rect.left = tile.right
-            collision_types['left'] = True
-    rect.y += movement[1]
-    hit_list = collision_test(rect,tiles)
-    for tile in hit_list:
-        if movement[1] > 0:
-            rect.bottom = tile.top
-            collision_types['bottom'] = True
-        elif movement[1] < 0:
-            rect.top = tile.bottom
-            collision_types['top'] = True
-    return rect, collision_types
 
 while True: # game loop (PART 1)
     display.fill((146,244,255)) # fills the screen with a rgb color to prevent trails (PART 2)
 
-    true_scroll[0] += (player_rect.x-true_scroll[0]-152)/20  # Scrolling, int 152 is for the player size 5px to be centered (PART 4)
-    true_scroll[1] += (player_rect.y-true_scroll[1]-106)/20
+    if grass_sound_timer > 0:
+        grass_sound_timer -= 1
+
+    true_scroll[0] += (player.x-true_scroll[0]-152)/20
+    true_scroll[1] += (player.y-true_scroll[1]-106)/20
     scroll = true_scroll.copy()
     scroll[0] = int(scroll[0])
     scroll[1] = int(scroll[1])
@@ -139,18 +93,17 @@ while True: # game loop (PART 1)
 
 
     tile_rects = [] # (PART 3)
-    y = 0
-    for layer in game_map:
-        x = 0
-        for tile in layer:
-            if tile == '1':
-                display.blit(dirt_img,(x * 16 - scroll[0], y * 16- scroll[1])) # scrolling/ tile movements (PART 4)
-            if tile == '2':
-                display.blit(grass_img,(x * 16 - scroll[0], y * 16 - scroll[1]))
-            if tile != '0':
-                tile_rects.append(pygame.Rect(x * 16, y * 16 ,16 ,16))
-            x += 1
-        y += 1
+    for y in range(3):
+        for x in range(4):
+            target_x = x - 1 + int(round(scroll[0]/(CHUNK_SIZE*16)))
+            target_y = y - 1 + int(round(scroll[1]/(CHUNK_SIZE*16)))
+            target_chunk = str(target_x) + ';' + str(target_y)
+            if target_chunk not in game_map:
+                game_map[target_chunk] = generate_chunk(target_x,target_y)
+            for tile in game_map[target_chunk]:
+                display.blit(tile_index[tile[1]],(tile[0][0]*16-scroll[0],tile[0][1]*16-scroll[1]))
+                if tile[1] in [1,2]:
+                    tile_rects.append(pygame.Rect(tile[0][0]*16,tile[0][1]*16,16,16))    
 
     player_movement = [0,0] # (PART 3)
     if moving_right == True:
@@ -163,42 +116,47 @@ while True: # game loop (PART 1)
         vertical_momentum = 3
 
     if player_movement[0] == 0:
-        player_action,player_frame = change_action(player_action, player_frame,'idle')
+        player.set_action('idle')
     if player_movement[0] > 0:
-        player_flip = False
-        player_action,player_frame = change_action(player_action, player_frame,'run')
+        player.set_flip(False)
+        player.set_action('run')
     if player_movement[0] < 0:
-        player_flip = True
-        player_action,player_frame = change_action(player_action, player_frame,'run')
+        player.set_flip(True)
+        player.set_action('run')
+    if player_movement[1] < 0:
+        player.set_action('jump')
 
+    collision_types = player.move(player_movement,tile_rects)
 
-    player_rect,collisions = move(player_rect,player_movement,tile_rects) # (PART 3)
-
-    if collisions['bottom'] == True: # (PART 3)
+    if collision_types['bottom'] == True: # (PART 3)
         air_timer = 0
         vertical_momentum = 0
+        if player_movement[0] != 0:
+            if grass_sound_timer == 0:
+                grass_sound_timer == 30
+                random.choice(grass_sounds).play() # function that picks a random sound (PART 6)
     else:
         air_timer += 1
 
-    player_frame += 1 # (PART 5)
-    if player_frame >= len(animation_database[player_action]):
-        player_frame = 0
-    player_img_id = animation_database[player_action][player_frame]
-    player_img = animation_frames[player_img_id]
-    display.blit(pygame.transform.flip(player_img,player_flip,False), (player_rect.x-scroll[0],player_rect.y-scroll[1]))
-
+    player.change_frame(1)
+    player.display(display, scroll)
 
     for event in pygame.event.get(): # event loop (PART1 1)
         if event.type == QUIT: # check for window quit (KEY_X) (PART 1) 
             pygame.quit() # stop pygame (PART 1)
             sys.exit() # stop script (PART 1)
         if event.type == KEYDOWN: # checking when keys are pressed down (PART 2)
+            if event.key == K_w:
+                pygame.mixer.music.fadeout(1000)
+            if event.key == K_e:
+                pygame.mixer.music.play(-1)    
             if event.key == K_RIGHT:
                 moving_right = True
             if event.key == K_LEFT:
                 moving_left = True
             if event.key == K_UP:
                 if air_timer < 6:
+                    jump_sound.play()
                     vertical_momentum = -5
         if event.type == KEYUP:
             if event.key == K_RIGHT:
