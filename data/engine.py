@@ -104,6 +104,15 @@ def blit_center(surf,surf2,pos):
     x = int(surf2.get_width()/2)
     y = int(surf2.get_height()/2)
     surf.blit(surf2,(pos[0]-x,pos[1]-y))
+
+
+
+
+
+
+
+
+    
  
 class entity(object):
     global animation_database, animation_higher_database

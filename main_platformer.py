@@ -23,6 +23,18 @@ air_timer = 0
 
 true_scroll = [0, 0] # (PART 4)
 
+############## SCORE TEST #########################################################################################
+score_value = 0
+font = pygame.font.Font('freesansbold.ttf', 32) # Font size is 32
+
+score_x = 10
+score_y = 10
+
+def show_score(x, y):
+    score = font.render("Score: " + str(score_value), True, (255, 255, 255))
+    screen.blit(score, (x, y))
+############## SCORE TEST #########################################################################################
+
 CHUNK_SIZE = 8
 
 def generate_chunk(x,y):
@@ -42,9 +54,23 @@ def generate_chunk(x,y):
             if tile_type != 0:
                 chunk_data.append([[target_x,target_y],tile_type])
     return chunk_data
-#################### PLAYER ANIMATIONS #####################
-e.load_animations('data/images/entities/')
 
+class jumper_obj():
+    def __init__(self, loc):
+        self.loc = loc
+
+    def render(self, surf, scroll):
+        surf.blit(jumper_img, (self.loc[0] - scroll[0], self.loc[1] - scroll[1]))
+
+    def get_rect(self):
+        return pygame.Rect(self.loc[0], self.loc[1], 8, 9)
+
+    def collision_test(self, rect):
+        jumper_rect = self.get_rect()
+        return jumper_rect.colliderect(rect)
+
+#################### ANIMATIONS ###############################################################################
+e.load_animations('data/images/entities/') # FROM GAME ENGINE (PART 8)
 game_map = {}
 
 grass_img = pygame.image.load('data/images/grass.png')
@@ -52,11 +78,47 @@ dirt_img = pygame.image.load('data/images/dirt.png')
 plant_img = pygame.image.load('data/images/plant.png').convert()
 plant_img.set_colorkey((255, 255, 255))
 
+jumper_img = pygame.image.load('data/images/jumper.png').convert()
+jumper_img.set_colorkey((255,255,255))
+
 tile_index = {1:grass_img, 
               2:dirt_img, 
               3:plant_img
               }
 
+
+
+global animation_frames ################## ENEMY TEST CODE #######################
+animation_frames = {}
+
+def load_animation(path,frame_durations):
+    global animation_frames
+    animation_name = path.split('/')[-1]
+    animation_frame_data = []
+    n = 0
+    for frame in frame_durations:
+        animation_frame_id = animation_name + '_' + str(n)
+        img_loc = path + '/' + animation_frame_id + '.png'
+        # player_animations/idle/idle_0.png
+        animation_image = pygame.image.load(img_loc).convert()
+        animation_image.set_colorkey((255,255,255))
+        animation_frames[animation_frame_id] = animation_image.copy()
+        for i in range(frame):
+            animation_frame_data.append(animation_frame_id)
+        n += 1
+    return animation_frame_data
+
+def change_action(action_var,frame,new_value):
+    if action_var != new_value:
+        action_var = new_value
+        frame = 0
+    return action_var,frame ################## ENEMY TEST CODE #######################
+
+
+#################### ANIMATIONS ###############################################################################
+
+
+############## SOUNDS #########################################################################################
 jump_sound = pygame.mixer.Sound('data/audio/jump.wav')
 grass_sounds = [pygame.mixer.Sound('data/audio/grass_0.wav'), pygame.mixer.Sound('data/audio/grass_1.wav')]
 grass_sounds[0].set_volume(0.2)
@@ -66,12 +128,27 @@ pygame.mixer.music.load('data/audio/music.wav')
 pygame.mixer.music.play(-1)
 
 grass_sound_timer = 0
+############## SOUNDS #########################################################################################
 
-player = e.entity(100, 100, 30, 23, 'player') # (PART 3)
+player = e.entity(100, 100, 30, 23, 'player') # FROM GAME ENGINE (PART 8)
+
+enemies = []
+
+for i in range(5):
+    enemies.append([0,e.entity(random.randint(0,600) -300, 80, 32, 32,'enemy')])
+
+jumper_objects = []
+
+for i in range(5):
+    jumper_objects.append(jumper_obj((random.randint(0,600)-300,80)))
+
 
 background_objects = [[0.25,[120,10,70,400]], [0.25,[280,30,40,400]], [0.5,[30,40,40,400]], [0.5,[130,90,100,400]], [0.5,[300,80,120,400]]]
 
-while True: # game loop (PART 1)
+
+
+##################### GAME LOOP ################################################################################
+while True: 
     display.fill((146,244,255)) # fills the screen with a rgb color to prevent trails (PART 2)
 
     if grass_sound_timer > 0:
@@ -141,6 +218,34 @@ while True: # game loop (PART 1)
     player.change_frame(1)
     player.display(display, scroll)
 
+
+    for jumper in jumper_objects:
+        jumper.render(display, scroll)
+        if jumper.collision_test(player.obj.rect):
+            vertical_momentum = -3
+
+    display_r = pygame.Rect(scroll[0],scroll[1],300,200)
+
+    for enemy in enemies:
+        if display_r.colliderect(enemy[1].obj.rect):
+            enemy[0] += 0.2
+            if enemy[0] > 3:
+                enemy[0] = 3
+            enemy_movement = [0,enemy[0]]
+            if player.x > enemy[1].x + 5:
+                enemy_movement[0] = 1
+            if player.x < enemy[1].x - 5:
+                enemy_movement[0] = -1
+            collision_types = enemy[1].move(enemy_movement,tile_rects)
+            if collision_types['bottom'] == True:
+                enemy[0] = 0
+
+            enemy[1].display(display,scroll)
+
+            if player.obj.rect.colliderect(enemy[1].obj.rect):
+                vertical_momentum = -4
+                
+
     for event in pygame.event.get(): # event loop (PART1 1)
         if event.type == QUIT: # check for window quit (KEY_X) (PART 1) 
             pygame.quit() # stop pygame (PART 1)
@@ -165,5 +270,6 @@ while True: # game loop (PART 1)
                 moving_left = False
 
     screen.blit(pygame.transform.scale(display,WINDOW_SIZE),(0,0))
+    show_score(score_x, score_y)
     pygame.display.update()
     clock.tick(60) # frames per second (PART 1)
