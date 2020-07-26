@@ -88,7 +88,14 @@ tile_index = {1:grass_img,
 
 
 
-global animation_frames ################## ENEMY TEST CODE #######################
+################## ENEMY TEST CODE #######################
+
+enemies = []
+
+for i in range(5):
+    enemies.append([0,e.entity(random.randint(0,600)-300,80,13,13,'enemy')])
+
+global animation_frames
 animation_frames = {}
 
 def load_animation(path,frame_durations):
@@ -99,7 +106,7 @@ def load_animation(path,frame_durations):
     for frame in frame_durations:
         animation_frame_id = animation_name + '_' + str(n)
         img_loc = path + '/' + animation_frame_id + '.png'
-        # player_animations/idle/idle_0.png
+        # enemy_animations/idle/idle_0.png
         animation_image = pygame.image.load(img_loc).convert()
         animation_image.set_colorkey((255,255,255))
         animation_frames[animation_frame_id] = animation_image.copy()
@@ -112,7 +119,49 @@ def change_action(action_var,frame,new_value):
     if action_var != new_value:
         action_var = new_value
         frame = 0
-    return action_var,frame ################## ENEMY TEST CODE #######################
+    return action_var,frame
+        
+
+animation_database = {}
+
+animation_database['fly'] = load_animation('data/entities/enemy/fly',[7,7,7,7,7])
+animation_database['idle'] = load_animation('data/entities/enemy/idle',[7,7])
+
+enemy_action = 'idle'
+enemy_frame = 0
+enemy_flip = False
+
+enemy_rect = pygame.Rect(100,100,5,13)
+
+def collision_test(rect,tiles):
+    hit_list = []
+    for tile in tiles:
+        if rect.colliderect(tile):
+            hit_list.append(tile)
+    return hit_list
+
+def move(rect,movement,tiles):
+    collision_types = {'top':False,'bottom':False,'right':False,'left':False}
+    rect.x += movement[0]
+    hit_list = collision_test(rect,tiles)
+    for tile in hit_list:
+        if movement[0] > 0:
+            rect.right = tile.left
+            collision_types['right'] = True
+        elif movement[0] < 0:
+            rect.left = tile.right
+            collision_types['left'] = True
+    rect.y += movement[1]
+    hit_list = collision_test(rect,tiles)
+    for tile in hit_list:
+        if movement[1] > 0:
+            rect.bottom = tile.top
+            collision_types['bottom'] = True
+        elif movement[1] < 0:
+            rect.top = tile.bottom
+            collision_types['top'] = True
+    return rect, collision_types
+################## ENEMY TEST CODE #######################
 
 
 #################### ANIMATIONS ###############################################################################
@@ -226,6 +275,9 @@ while True:
 
     display_r = pygame.Rect(scroll[0],scroll[1],300,200)
 
+ 
+##################### TEST CODE #########################
+
     for enemy in enemies:
         if display_r.colliderect(enemy[1].obj.rect):
             enemy[0] += 0.2
@@ -244,7 +296,46 @@ while True:
 
             if player.obj.rect.colliderect(enemy[1].obj.rect):
                 vertical_momentum = -4
-                
+
+    enemy_movement = [0,0]
+    if moving_right == True:
+        enemy_movement[0] += 2
+    if moving_left == True:
+        enemy_movement[0] -= 2
+    enemy_movement[1] += vertical_momentum
+    vertical_momentum += 0.2
+    if vertical_momentum > 3:
+        vertical_momentum = 3
+
+    if enemy_movement[0] == 0:
+        enemy_action,enemy_frame = change_action(enemy_action,enemy_frame,'idle')
+    if enemy_movement[0] > 0:
+        enemy_flip = False
+        enemy_action,enemy_frame = change_action(enemy_action,enemy_frame,'run')
+    if enemy_movement[0] < 0:
+        enemy_flip = True
+        enemy_action,enemy_frame = change_action(enemy_action,enemy_frame,'run')
+
+    enemy_rect,collisions = move(enemy_rect,enemy_movement,tile_rects)
+
+    if collisions['bottom'] == True:
+        air_timer = 0
+        vertical_momentum = 0
+    else:
+        air_timer += 1
+
+    enemy_frame += 1
+    if enemy_frame >= len(animation_database[enemy_action]):
+        enemy_frame = 0
+    enemy_img_id = animation_database[enemy_action][enemy_frame]
+    enemy_img = animation_frames[enemy_img_id]
+    display.blit(pygame.transform.flip(enemy_img,enemy_flip,False),(enemy_rect.x-scroll[0],enemy_rect.y-scroll[1]))
+
+
+
+##################### TEST CODE #########################
+
+
 
     for event in pygame.event.get(): # event loop (PART1 1)
         if event.type == QUIT: # check for window quit (KEY_X) (PART 1) 
